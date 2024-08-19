@@ -31,8 +31,6 @@ template_dir = str(pathlib.Path(__file__).parent.joinpath("templates"))
 static_dir = str(pathlib.Path(__file__).parent.joinpath("static"))
 templates = Jinja2Templates(directory=template_dir)
 
-tms = morecantile.tms.get("WebMercatorQuad")
-WGS84_CRS = CRS.from_epsg(4326)
 
 
 def bbox_to_feature(
@@ -130,6 +128,7 @@ class TileDebug:
     port: int = attr.ib(default=8080)
     host: str = attr.ib(default="127.0.0.1")
     config: Dict = attr.ib(default=dict)
+    default_tms: str = "WebMercatorQuad"
 
     router: Optional[APIRouter] = attr.ib(init=False)
 
@@ -241,6 +240,7 @@ class TileDebug:
         )
         def info():
             """Return a geojson."""
+            tms = morecantile.tms.get(self.default_tms)
             with Reader(self.src_path) as src_dst:
                 width, height = src_dst.dataset.width, src_dst.dataset.height
 
@@ -313,6 +313,8 @@ class TileDebug:
         )
         def grid(ovr_level: Annotated[int, Query(description="Overview Level")]):
             """return geojson."""
+            tms = morecantile.tms.get(self.default_tms)
+            geographic_crs = tms._geographic_crs
             options = {"OVERVIEW_LEVEL": ovr_level - 1} if ovr_level else {}
             with rasterio.open(self.src_path, **options) as src_dst:
                 feats = []
@@ -325,7 +327,7 @@ class TileDebug:
                 for window in winds:
                     fc = bbox_to_feature(windows.bounds(window, src_dst.transform))
                     for feat in fc.get("features", []):
-                        geom = transform_geom(src_dst.crs, WGS84_CRS, feat["geometry"])
+                        geom = transform_geom(src_dst.crs, geographic_crs, feat["geometry"]) #### TODO update to allow other geographic CRSs
                         feats.append(
                             {
                                 "type": "Feature",
@@ -343,10 +345,17 @@ class TileDebug:
         )
         async def viewer(request: Request):
             """Handle /index.html."""
+            tms = morecantile.tms.get(self.default_tms)
+            body_radius = tms._geographic_crs.ellipsoid.semi_major_metre
+            max_extent = tms.matrix(0).pointOfOrigin[1]
+            tile_width = tms.matrix(0).tileWidth
             return templates.TemplateResponse(
                 name="index.html",
                 context={
                     "request": request,
+                    "body_radius": body_radius,
+                    "max_extent": max_extent,
+                    "tile_width": tile_width,
                     "geojson_endpoint": str(request.url_for("info")),
                     "grid_endpoint": str(request.url_for("grid")),
                     "tile_endpoint": str(

@@ -264,6 +264,7 @@ def viz(src_path, port, host, server_only, reader, config):
         reader=Reader,
         port=port,
         host=host,
+        default_tms="WebMercatorQuad",
         config=config,
     )
     if not server_only:

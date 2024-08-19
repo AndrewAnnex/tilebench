@@ -109,12 +109,16 @@
 
     <script>
     const scope = {metadata: undefined}
-    const merc = new SphericalMercator({ size: 256 });
+    const body_radius = parseFloat('{{ body_radius }}');
+    const max_extent = parseFloat('{{ max_extent }}');
+    const tile_width = parseInt('{{ tile_width }}');
+    const merc = new SphericalMercator({ size: tile_width, body_radius: body_radius, max_extent: max_extent });
 
     const info_endpoint = '{{ geojson_endpoint }}'
     const grid_endpoint = '{{ grid_endpoint }}'
     const image_endpoint = '{{ image_endpoint }}'
 
+    // TODO switch map libre to use equirectangular geographical CRS instead of mercator
     var map = new maplibregl.Map({
       container: 'map',
       style: {
@@ -125,7 +129,7 @@
             tiles: [
               'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
             ],
-            tileSize: 256,
+            tileSize: tile_width,
             attribution:
               '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           }
@@ -282,7 +286,7 @@
                     minzoom: scope.metadata.minzoom,
                     maxzoom: scope.metadata.minzoom,
                     tiles: [image_endpoint],
-                    tileSize: 256 // This might be false but it's not in TileJSON
+                    tileSize: tile_width // This might be false but it's not in TileJSON
                     })
                     map.addLayer({id: 'raster-l', type: 'raster', source: 'raster-l', paint: {'raster-opacity': 0.6}})
 
@@ -293,7 +297,7 @@
                     minzoom: scope.metadata.minzoom,
                     maxzoom: scope.metadata.minzoom,
                     tiles: [image_endpoint],
-                    tileSize: 256 // This might be false but it's not in TileJSON
+                    tileSize: tile_width // This might be false but it's not in TileJSON
                     })
                     map.addLayer({id: 'raster-r', type: 'raster', source: 'raster-r', paint: {'raster-opacity': 0.6}})
 
@@ -304,7 +308,7 @@
                     minzoom: scope.metadata.minzoom,
                     maxzoom: scope.metadata.minzoom, // THIS IS ON PURPOSE, We don't really need high resolution tiles
                     tiles: [image_endpoint],
-                    tileSize: 256 // This might be false but it's not in TileJSON
+                    tileSize: tile_width // This might be false but it's not in TileJSON
                     })
                     map.addLayer({id: 'raster', type: 'raster', source: 'raster', paint: {'raster-opacity': 0.6}})
                 }

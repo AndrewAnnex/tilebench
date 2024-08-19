@@ -4,16 +4,18 @@ var SphericalMercator = (function(){
 var cache = {},
     EPSLN = 1.0e-10,
     D2R = Math.PI / 180,
-    R2D = 180 / Math.PI,
-    // 900913 properties.
-    A = 6378137.0,
-    MAXEXTENT = 20037508.342789244;
+    R2D = 180 / Math.PI
+
+
 
 
 // SphericalMercator constructor: precaches calculations
 // for fast tile lookups.
 function SphericalMercator(options) {
     options = options || {};
+    // 900913 properties.
+    this.A  = options.body_radius ||  6378137.0;
+    this.MAXEXTENT = options.max_extent || 20037508.342789244;
     this.size = options.size || 256;
     if (!cache[this.size]) {
         var size = this.size;
@@ -34,7 +36,6 @@ function SphericalMercator(options) {
     this.Cc = cache[this.size].Cc;
     this.zc = cache[this.size].zc;
     this.Ac = cache[this.size].Ac;
-    this.MAXEXTENT = MAXEXTENT;
 };
 
 // Convert lon lat to screen pixel value
@@ -142,20 +143,22 @@ SphericalMercator.prototype.convert = function(bbox, to) {
 
 // Convert lon/lat values to 900913 x/y.
 SphericalMercator.prototype.forward = function(ll) {
+    var A = this.A;
     var xy = [
         A * ll[0] * D2R,
         A * Math.log(Math.tan((Math.PI*0.25) + (0.5 * ll[1] * D2R)))
     ];
     // if xy value is beyond maxextent (e.g. poles), return maxextent.
-    (xy[0] > MAXEXTENT) && (xy[0] = MAXEXTENT);
-    (xy[0] < -MAXEXTENT) && (xy[0] = -MAXEXTENT);
-    (xy[1] > MAXEXTENT) && (xy[1] = MAXEXTENT);
-    (xy[1] < -MAXEXTENT) && (xy[1] = -MAXEXTENT);
+    (xy[0] > this.MAXEXTENT) && (xy[0] = this.MAXEXTENT);
+    (xy[0] < -this.MAXEXTENT) && (xy[0] = -this.MAXEXTENT);
+    (xy[1] > this.MAXEXTENT) && (xy[1] = this.MAXEXTENT);
+    (xy[1] < -this.MAXEXTENT) && (xy[1] = -this.MAXEXTENT);
     return xy;
 };
 
 // Convert 900913 x/y values to lon/lat.
 SphericalMercator.prototype.inverse = function(xy) {
+    var A = this.A;
     return [
         (xy[0] * R2D / A),
         ((Math.PI*0.5) - 2.0 * Math.atan(Math.exp(-xy[1] / A))) * R2D
