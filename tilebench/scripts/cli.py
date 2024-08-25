@@ -247,8 +247,26 @@ def random(input, zoom, reader, tms):
     callback=options._cb_key_val,
     help="GDAL configuration options.",
 )
-def viz(src_path, port, host, server_only, reader, config):
+@click.option(
+    "--tms_name",
+    type=str,
+    default="WebMercatorQuad",
+    help="Name of the TileMatrixSet",
+)
+@click.option(
+    "--tms_path",
+    help="Path to TileMatrixSet JSON file.",
+    type=click.Path(),
+)
+def viz(src_path, port, host, server_only, reader, config, tms_name, tms_path):
     """WEB UI to visualize VSI statistics for a web mercator tile requests."""
+    if tms_path:
+        with open(tms_path, "r") as f:
+            tilematrixset = morecantile.TileMatrixSet(**json.load(f))
+    elif tms_name:
+        tilematrixset = morecantile.tms.get(tms_name)
+    else:
+        tilematrixset = default_tms
     if reader:
         module, classname = reader.rsplit(".", 1)
         reader = getattr(importlib.import_module(module), classname)  # noqa
@@ -264,7 +282,7 @@ def viz(src_path, port, host, server_only, reader, config):
         reader=Reader,
         port=port,
         host=host,
-        default_tms="WebMercatorQuad",
+        tms=tilematrixset,
         config=config,
     )
     if not server_only:

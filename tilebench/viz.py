@@ -128,7 +128,7 @@ class TileDebug:
     port: int = attr.ib(default=8080)
     host: str = attr.ib(default="127.0.0.1")
     config: Dict = attr.ib(default=dict)
-    default_tms: str = "WebMercatorQuad"
+    tms = attr.ib(default=morecantile.tms.get("WebMercatorQuad"))
 
     router: Optional[APIRouter] = attr.ib(init=False)
 
@@ -240,7 +240,6 @@ class TileDebug:
         )
         def info():
             """Return a geojson."""
-            tms = morecantile.tms.get(self.default_tms)
             with Reader(self.src_path) as src_dst:
                 width, height = src_dst.dataset.width, src_dst.dataset.height
 
@@ -256,13 +255,13 @@ class TileDebug:
                 info["overviews"] = len(ovr)
                 dst_affine, _, _ = calculate_default_transform(
                     src_dst.dataset.crs,
-                    tms.crs,
+                    self.tms.crs,
                     width,
                     height,
                     *src_dst.dataset.bounds,
                 )
                 resolution = max(abs(dst_affine[0]), abs(dst_affine[4]))
-                zoom = tms.zoom_for_res(resolution)
+                zoom = self.tms.zoom_for_res(resolution)
                 info["maxzoom"] = zoom
 
                 ifd = [
@@ -281,13 +280,13 @@ class TileDebug:
                 with rasterio.open(self.src_path, OVERVIEW_LEVEL=ix) as ovr_dst:
                     dst_affine, _, _ = calculate_default_transform(
                         ovr_dst.crs,
-                        tms.crs,
+                        self.tms.crs,
                         ovr_dst.width,
                         ovr_dst.height,
                         *ovr_dst.bounds,
                     )
                     resolution = max(abs(dst_affine[0]), abs(dst_affine[4]))
-                    zoom = tms.zoom_for_res(resolution)
+                    zoom = self.tms.zoom_for_res(resolution)
 
                     ifd.append(
                         {
@@ -313,8 +312,7 @@ class TileDebug:
         )
         def grid(ovr_level: Annotated[int, Query(description="Overview Level")]):
             """return geojson."""
-            tms = morecantile.tms.get(self.default_tms)
-            geographic_crs = tms._geographic_crs
+            geographic_crs = self.tms._geographic_crs
             options = {"OVERVIEW_LEVEL": ovr_level - 1} if ovr_level else {}
             with rasterio.open(self.src_path, **options) as src_dst:
                 feats = []
@@ -345,10 +343,9 @@ class TileDebug:
         )
         async def viewer(request: Request):
             """Handle /index.html."""
-            tms = morecantile.tms.get(self.default_tms)
-            body_radius = tms._geographic_crs.ellipsoid.semi_major_metre
-            max_extent = tms.matrix(0).pointOfOrigin[1]
-            tile_width = tms.matrix(0).tileWidth
+            body_radius = self.tms._geographic_crs.ellipsoid.semi_major_metre
+            max_extent = self.tms.matrix(0).pointOfOrigin[1]
+            tile_width = self.tms.matrix(0).tileWidth
             return templates.TemplateResponse(
                 name="index.html",
                 context={
